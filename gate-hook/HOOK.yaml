@@ -1,0 +1,4 @@
+name: 2b-gate
+description: Per-user gate for the /2b command. Reads ~/.config/2b-mode/gate.json; denies before dispatch. Command handlers never see the caller, this hook does.
+events:
+  - command:2b
