@@ -38,6 +38,12 @@ ROOT = Path(__file__).resolve().parent
 SKILLS_DIR = ROOT / "skills"
 CORE_SKILL = SKILLS_DIR / "2b" / "SKILL.md"
 
+# Opt-in firing log: set HERMES_2B_PROBE=1 (and restart the gateway) to log
+# every pre_llm_call firing. This is the diagnostic that settled the first
+# real injection debug; /2b diag reads it back.
+PROBE = os.environ.get("HERMES_2B_PROBE", "").strip().lower() in ("1", "true", "yes")
+PROBE_LOG = STATE_DIR / ".2b_probe.log"
+
 SKILL_COMMANDS = {
     "scan": ("2b-scan", "Review the current diff. Findings only, ranked."),
     "audit": ("2b-audit", "Sweep the repo for dead weight. Evidence, then the kill list."),
@@ -101,9 +107,9 @@ def disengage(kill: bool = False, now: float | None = None) -> str:
 
 def status_line() -> str:
     if is_killed():
-        return "[2B] Killed until gateway restart. /2b engage | disengage [kill] | scan | audit"
+        return "[2B] Killed until gateway restart. /2b engage | disengage [kill] | scan | audit | diag"
     state = "engaged" if is_engaged() else "standby"
-    return f"[2B] {state}. /2b engage | disengage [kill] | scan | audit"
+    return f"[2B] {state}. /2b engage | disengage [kill] | scan | audit | diag"
 
 
 # ── Context injection ─────────────────────────────────────────────────────────
@@ -127,10 +133,38 @@ def build_context() -> str:
     return f"[2B]\n{body}"
 
 
+def _probe_mark() -> None:
+    if not PROBE:
+        return
+    try:
+        if PROBE_LOG.exists() and PROBE_LOG.stat().st_size > 1_000_000:
+            PROBE_LOG.unlink()
+        with open(PROBE_LOG, "a") as f:
+            f.write("%f fired engaged=%s killed=%s\n" % (
+                time.time(), is_engaged(), is_killed()))
+    except Exception:
+        pass
+
+
 def _pre_llm_call(**_kwargs) -> dict | None:
+    _probe_mark()
     if is_engaged() and not is_killed():
         return {"context": build_context()}
     return None
+
+
+def diag() -> str:
+    """One reply that answers 'is the injection pipeline healthy'."""
+    parts = [status_line()]
+    parts.append(f"skill file: {'ok' if CORE_SKILL.exists() else 'MISSING, fallback directive in use'}")
+    ctx = build_context()
+    parts.append(f"context: {len(ctx)} chars, header {ctx.splitlines()[0]!r}")
+    if PROBE:
+        n = len(PROBE_LOG.read_text().splitlines()) if PROBE_LOG.exists() else 0
+        parts.append(f"probe: on, {n} firings logged")
+    else:
+        parts.append("probe: off (HERMES_2B_PROBE=1 + gateway restart to log firings)")
+    return "\n".join(parts)
 
 
 # ── Command ───────────────────────────────────────────────────────────────────
@@ -153,6 +187,8 @@ def _make_handler(ctx):
             return disengage()
         if low in ("disengage kill", "kill"):
             return disengage(kill=True)
+        if low == "diag":
+            return diag()
         head, _, rest = arg.partition(" ")
         if head.lower() in SKILL_COMMANDS:
             prompt = _skill_prompt(head.lower(), rest)
@@ -183,7 +219,7 @@ def register(ctx) -> None:
         "2b",
         _make_handler(ctx),
         description="2B battle overlay: engage, disengage [kill], scan, audit, status.",
-        args_hint="[engage|disengage [kill]|scan|audit|status]",
+        args_hint="[engage|disengage [kill]|scan|audit|diag|status]",
     )
 
     log = getattr(ctx, "logger", None)
@@ -227,6 +263,18 @@ def _self_test() -> int:
         ok("context has no matchable banner", "MODE" not in ctxt and "ACTIVE" not in ctxt.split("\n")[0])
         ok("engaged injects", (_pre_llm_call() or {}).get("context", "").startswith("[2B]"))
         ok("corrupt state fails safe", (STATE_FILE.write_text("junk") or True) and not is_engaged())
+        d = diag()
+        ok("diag reports context size and header", "context:" in d and "'[2B]'" in d)
+        ok("diag reports skill file ok", "skill file: ok" in d)
+        global PROBE, PROBE_LOG
+        PROBE_LOG = STATE_DIR / "probe.log"
+        PROBE = False
+        _probe_mark()
+        ok("probe off writes nothing", not PROBE_LOG.exists())
+        PROBE = True
+        _probe_mark()
+        ok("probe on logs a firing", PROBE_LOG.exists() and "fired" in PROBE_LOG.read_text())
+        PROBE = False
 
         failed = [n for n, c in checks if not c]
         for n, c in checks:
