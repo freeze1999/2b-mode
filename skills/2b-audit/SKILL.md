@@ -33,7 +33,7 @@ security, accessibility, requested behavior, runnable checks.
 
 Ranked kill list, biggest deletion first, at most ten entries:
 
-`[rank]. file(s) — [what] — [-N lines] — [evidence: the grep or trace that confirmed it]`
+`[rank]. file(s): [what], [-N lines], evidence: [the grep or trace that confirmed it]`
 
 End with the single line: `total recoverable: ~N lines across M files`.
 No preamble. No essay. If the sweep finds nothing worth an entry, the whole

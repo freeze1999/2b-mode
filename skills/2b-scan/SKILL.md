@@ -37,7 +37,7 @@ security, accessibility, requested behavior, small runnable checks.
 
 One line per finding, ranked most damage first:
 
-`file:line — [what] → [the lower-rung replacement, with the deletion count]`
+`file:line: [what] → [the lower-rung replacement, with the deletion count]`
 
 End with one line: `scan clean` if nothing confirmed, otherwise
 `N confirmed, deepest cut: [file]`. Nothing else. No preamble, no summary
