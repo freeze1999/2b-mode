@@ -1,0 +1,44 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "exec node \"${CLAUDE_PLUGIN_ROOT}/hooks/2b-activate.js\"",
+            "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\2b-activate.js\" }",
+            "timeout": 5,
+            "statusMessage": "Loading 2B mode..."
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "exec node \"${CLAUDE_PLUGIN_ROOT}/hooks/2b-activate.js\"",
+            "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\2b-activate.js\" }",
+            "timeout": 5,
+            "statusMessage": "Loading 2B mode..."
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "exec node \"${CLAUDE_PLUGIN_ROOT}/hooks/2b-command.js\"",
+            "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\2b-command.js\" }",
+            "timeout": 5,
+            "statusMessage": "2B command..."
+          }
+        ]
+      }
+    ]
+  }
+}
