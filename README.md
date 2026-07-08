@@ -60,13 +60,42 @@ Lock it to yourself (optional; open by default):
 | `/2b disengage kill` | off + engage disabled until gateway restart |
 | `/2b scan [target]` | review the current diff for over-engineering, findings only, ranked |
 | `/2b audit` | full-repo sweep for dead weight, evidence then kill list |
+| `/2b diag` | injection-pipeline health in one reply: state, skill file, context size, probe |
+
+## Make it your own overlay
+
+The 2B persona is content, not mechanics. Everything load-bearing (explicit
+command, gate, cooldown, kill switch, identity-safe injection) lives in the
+plugin; the stance itself is just `skills/2b/SKILL.md`. Rewrite that file
+into any working-style overlay you want, keep the `[2B]`-style short header,
+and the same enforcement carries it. The scan and audit skills are equally
+swappable.
+
+## Troubleshooting
+
+The failure mode you will actually hit: commands work, state says engaged,
+but the agent's behavior doesn't change. Debug it in this order (this is
+the order that settled it in production):
+
+1. `/2b diag`, checks the plugin's own half: state, skill file resolvable,
+   context builds with the right header.
+2. Set `HERMES_2B_PROBE=1` in the gateway's environment and restart it.
+   Every `pre_llm_call` firing now appends a line to
+   `~/.hermes/.2b_probe.log` (self-truncates at 1MB). No lines after real
+   messages = your gateway's turn path never fires plugin `pre_llm_call`,
+   which is a gateway-side issue, not this plugin.
+3. Lines appear with `engaged=True` but behavior is unchanged = check where
+   your Hermes version injects plugin context (`agent/turn_context.py`,
+   `agent/conversation_loop.py`): it should append to the current user
+   message. Then remember the overlay adds work discipline, not a
+   personality: judge it on a coding task, not small talk.
 
 ## Self-tests
 
 Both moving parts carry their own suites, pure logic, no gateway needed:
 
 ```bash
-python3 __init__.py --test          # 14 checks: state machine, cooldown, kill, injection
+python3 __init__.py --test          # 18 checks: state machine, cooldown, kill, injection, diag, probe
 python3 gate-hook/handler.py --test # 8 checks: gate policy incl. fail-open/fail-closed
 ```
 
