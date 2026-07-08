@@ -1,0 +1,34 @@
+{
+  "name": "2b-mode",
+  "version": "1.0.0",
+  "description": "Battle overlay for AI coding agents. /2b engage: an explicit-command, silent minimal-strike coding stance with a state machine, engage-only cooldown, and kill switch. Runs on Hermes, Claude Code, Codex, Copilot, opencode, pi, Gemini CLI, and any MCP host.",
+  "keywords": ["opencode-plugin", "opencode", "pi-package", "pi", "skills", "mcp", "claude-code", "codex", "2b", "ponytail"],
+  "license": "MIT",
+  "homepage": "https://github.com/freeze1999/2b-mode",
+  "repository": { "type": "git", "url": "git+https://github.com/freeze1999/2b-mode.git" },
+  "bugs": { "url": "https://github.com/freeze1999/2b-mode/issues" },
+  "main": "./.opencode/plugins/2b-mode.mjs",
+  "exports": {
+    ".": "./.opencode/plugins/2b-mode.mjs",
+    "./plugin": "./.opencode/plugins/2b-mode.mjs"
+  },
+  "files": [
+    "AGENTS.md",
+    "shared/",
+    "hooks/",
+    "skills/",
+    ".opencode/",
+    "pi-extension/",
+    "commands/",
+    "gemini-extension.json",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
+  "pi": {
+    "extensions": ["./pi-extension/index.js"],
+    "skills": ["./skills"]
+  },
+  "publishConfig": { "access": "public" }
+}

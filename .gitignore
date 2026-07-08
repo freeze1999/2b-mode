@@ -2,9 +2,14 @@
 __pycache__/
 *.py[cod]
 
+# Node
+node_modules/
+package-lock.json
+
 # Runtime state, never in a repo
 .2b_state.json
 .2b_killswitch
+.2b_probe.log
 gate.json
 
 # macOS
