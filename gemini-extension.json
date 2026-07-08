@@ -1,0 +1,6 @@
+{
+  "name": "2b-mode",
+  "version": "1.0.0",
+  "description": "2B combat coding overlay. Silent, precise, minimal strike: YAGNI, reuse first, stdlib before custom, the smallest correct change.",
+  "contextFileName": "AGENTS.md"
+}
