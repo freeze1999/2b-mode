@@ -1,0 +1,13 @@
+{
+  "name": "2b-mode-mcp",
+  "version": "1.0.0",
+  "description": "MCP server that serves the 2B combat coding directive as a prompt and a tool.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "bin": { "2b-mode-mcp": "./index.js" },
+  "scripts": { "test": "node --test ./test/*.test.js" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0"
+  }
+}
