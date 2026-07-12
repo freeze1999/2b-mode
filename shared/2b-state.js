@@ -53,17 +53,28 @@ function cooldownRemaining(dir, now) {
   return Math.max(0, ENGAGE_COOLDOWN_S - (nowSeconds(now) - last));
 }
 
-function engage(dir, now) {
+// `heavy` is the mode name ("max" or "ultra") when a heavy-model engagement is
+// active, or falsy for a plain engage. The gateway resolver reads it to apply
+// the heavy model; clearing it on disengage restores the normal model with no
+// capture-and-restore step.
+function engage(dir, now, heavy) {
   const t = nowSeconds(now);
   if (isKilled(dir)) return '[2B] Kill switch armed. Engage disabled until session restart.';
   if (isEngaged(dir)) return '[2B] Already engaged.';
   const wait = cooldownRemaining(dir, t);
   if (wait > 0) return `[2B] Cooldown. ${Math.floor(wait) + 1}s.`;
-  saveState(dir, { engaged: true, last_engage_toggle: t });
-  return '[2B] Engaged.';
+  const s = { engaged: true, last_engage_toggle: t };
+  if (heavy) s.heavy = heavy;
+  saveState(dir, s);
+  return heavy ? `[2B] Engaged (${heavy}).` : '[2B] Engaged.';
 }
 
-// Never rate-limited, never blocked. The brake always brakes.
+function heavyMode(dir) {
+  return isEngaged(dir) && !isKilled(dir) ? (loadState(dir).heavy || null) : null;
+}
+
+// Never rate-limited, never blocked. The brake always brakes. Clearing the
+// state also clears any heavy flag, so the model reverts automatically.
 function disengage(dir, kill, now) {
   const t = nowSeconds(now);
   const was = isEngaged(dir);
@@ -76,6 +87,32 @@ function disengage(dir, kill, now) {
   return was ? '[2B] Disengaged.' : '[2B] Not engaged.';
 }
 
+// ── Confirm flow (type-to-confirm gate for the expensive modes) ──────────────
+// max, ultra, and scan post an approval card and only fire when the user types
+// the exact confirm phrase within the window. This is what stops an accidental
+// /2b max from switching to a paid model and burning credits.
+
+const CONFIRM_WINDOW_S = 60;
+
+function setPending(dir, mode, phrase, now) {
+  const s = loadState(dir);
+  s.pending = { mode, phrase, expires: nowSeconds(now) + CONFIRM_WINDOW_S };
+  saveState(dir, s);
+}
+
+function getPending(dir, now) {
+  const p = loadState(dir).pending;
+  if (!p) return null;
+  if (nowSeconds(now) > p.expires) { clearPending(dir); return null; }
+  return p;
+}
+
+function clearPending(dir) {
+  const s = loadState(dir);
+  delete s.pending;
+  saveState(dir, s);
+}
+
 // Called by an adapter on session start: clears the kill sentinel, which is the
 // CLI equivalent of the gateway restart that re-arms engage.
 function clearKill(dir) {
@@ -83,9 +120,10 @@ function clearKill(dir) {
 }
 
 module.exports = {
-  ENGAGE_COOLDOWN_S,
+  ENGAGE_COOLDOWN_S, CONFIRM_WINDOW_S,
   loadState, saveState,
-  isEngaged, isKilled,
+  isEngaged, isKilled, heavyMode,
   cooldownRemaining, engage, disengage, clearKill,
+  setPending, getPending, clearPending,
   statePath, killPath,
 };
