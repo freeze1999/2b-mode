@@ -223,13 +223,15 @@ def build_context() -> str:
     try:
         body = _strip_frontmatter(CORE_SKILL.read_text(encoding="utf-8")).strip()
     except OSError:
-        body = ("Minimum-resource, maximum-output execution mode. Inventory "
-                "first: existing code, git history, installed dependencies, "
-                "stdlib, platform. Write the fewest correct lines in the "
-                "right place; verify by running before reporting done; "
-                "conclusions only, no filler. Never simplify away "
-                "trust-boundary validation, data-loss handling, security, "
-                "or requested behavior.")
+        body = ("Hesitation is defeat. Read the opening, then commit to the "
+                "smallest COMPLETE solution that runs: reuse before building, "
+                "deflect with the stdlib and what is installed, defer "
+                "speculative robustness in one line instead of writing it, "
+                "finish the strike rather than start what you cannot land. "
+                "Confirm by running; do not claim verified without it. Never "
+                "sacrifice trust-boundary validation, data-loss handling, "
+                "security, or requested behavior. Code first, then at most: "
+                "deferred X, confirmed by Z.")
     return f"[2B]\n{body}"
 
 
