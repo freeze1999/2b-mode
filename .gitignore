@@ -11,6 +11,7 @@ package-lock.json
 .2b_killswitch
 .2b_probe.log
 gate.json
+heavy.json
 
 # macOS
 .DS_Store

@@ -112,12 +112,61 @@ Lock Hermes to yourself (optional; open by default):
 | Command | Effect |
 |---|---|
 | `/2b` or `/2b status` | state + usage, one line |
-| `/2b engage` | execution mode on (30s cooldown between engages) |
-| `/2b disengage` | mode off, never rate-limited |
+| `/2b engage` | execution mode on, default model (30s cooldown between engages) |
+| `/2b max` | **gated.** arm heavy-model mode: 2B on a stronger model for the whole task |
+| `/2b ultra` | **gated.** arm heavy model + auto-run the orchestration scan first |
+| `/2b scan` | **gated.** orchestration: decompose, route each part to the cheapest capable model, delegate to a bridge where one fits, execute the approved plan |
+| `/2b confirm <mode>` | fire an armed max/ultra/scan within 60s (the type-to-confirm gate) |
+| `/2b disengage` | mode off, never rate-limited; reverts the model |
 | `/2b disengage kill` | off + engage disabled until the next session/gateway start |
-| `/2b scan [target]` | review the current diff for over-engineering, findings only, ranked |
-| `/2b audit` | full-repo sweep for dead weight, evidence then kill list |
-| `/2b diag` | injection-pipeline health in one reply: state, skill file, context size, probe |
+| `/2b review [target]` | review the current diff for over-engineering, findings only |
+| `/2b audit` | full-repo review for recoverable waste, evidence then a ranked deletion list |
+| `/2b diag` | pipeline health: state, skill file, context size, heavy model, probe |
+
+## The expensive modes and the confirm gate
+
+`max`, `ultra`, and `scan` can each spend real money (a paid model, or fanning
+work out to models and bridges), so none of them fires on the first command.
+Each posts an approval card naming the exact cost, and only runs after you type
+the matching confirm phrase within 60 seconds:
+
+```
+▛▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▜
+  2B // MAX
+  heavy model: Opus via OpenRouter
+  cost: the whole task runs on a paid model
+
+  armed. reply  /2b confirm max  within 60s
+▙▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▟
+```
+
+An accidental `/2b max` costs nothing: it arms, and lapses in 60s if you do not
+confirm. `disengage` reverts to the normal model automatically.
+
+## Heavy model setup
+
+`max` and `ultra` switch to a heavy model you configure once. No model is
+hardcoded, so it runs against Anthropic direct, OpenRouter, or any router:
+
+```bash
+node setup.js                        # interactive wizard
+node setup.js --provider openrouter --model anthropic/claude-opus-4 --key-env OPENROUTER_API_KEY
+node setup.js --show                 # print the current config
+```
+
+It writes `~/.config/2b-mode/heavy.json`. The gateway/CLI must already have the
+named API key in its environment. Point it at a cheap model first
+(`--model google/gemini-2.5-flash`) to dry-run the switch for near nothing,
+then re-run the wizard for your real heavy model.
+
+## Where each mode works
+
+`engage`, `review`, `audit`, `scan` (as a directive), and the confirm gate work
+on every platform. The actual **model switch** for `max`/`ultra` needs a seam in
+the host's model resolver, which ships for Hermes as an optional patch
+(`hermes-integration/apply-heavy-patch.py`, reversible, applied with a backup).
+On a host without that seam, `max`/`ultra` still engage 2B and gate correctly,
+but the model does not change; use the host's own model switch alongside.
 
 ## Make it your own overlay
 
