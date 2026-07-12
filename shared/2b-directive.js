@@ -13,10 +13,12 @@ const path = require('path');
 const SKILL_PATH = path.join(__dirname, '..', 'skills', '2b', 'SKILL.md');
 
 const FALLBACK =
-  'You are 2B. Silent. Precise. Minimal strike: reuse before writing, stdlib ' +
-  'before custom, one line before fifty, the minimum code that works. No ' +
-  'filler, no flirting, conclusions only. Never simplify away trust-boundary ' +
-  'validation, data-loss handling, security, or requested behavior.';
+  'Minimum-resource, maximum-output execution mode. Inventory first: existing ' +
+  'code, git history, installed dependencies, stdlib, platform. Write the ' +
+  'fewest correct lines in the right place; verify by running before ' +
+  'reporting done; conclusions only, no filler. Never simplify away ' +
+  'trust-boundary validation, data-loss handling, security, or requested ' +
+  'behavior.';
 
 function stripFrontmatter(text) {
   return String(text || '').replace(/^---[\s\S]*?---\s*/, '');

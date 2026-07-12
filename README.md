@@ -2,11 +2,12 @@
 
 *What if your agent's "be minimal" mode couldn't be talked into turning itself on?*
 
-A battle overlay for AI coding agents. `/2b engage` swaps the agent into a
-silent, precise, minimal-strike coding stance; `/2b disengage` swaps it back.
-While engaged, every turn carries one injected directive: question whether the
-code needs to exist, reuse before writing, stdlib before custom, one line before
-fifty, conclusions only.
+An execution mode for AI coding agents. `/2b engage` switches the agent to
+minimum-resource, maximum-output procedure; `/2b disengage` switches it back.
+While engaged, every turn carries one injected directive: inventory existing
+resources first (codebase, git history, installed dependencies, stdlib,
+platform), write the fewest verified lines in the right place, report in
+conclusions only.
 
 Runs on eight surfaces from one shared core: **Hermes**, **Claude Code**,
 **Codex**, **Copilot**, **opencode**, **pi**, **Gemini CLI**, and any **MCP**
@@ -59,8 +60,8 @@ same guarantee, mapped to each platform's lifecycle.
 
 ## Install
 
-Pick your platform. All of them read the same `skills/2b/SKILL.md`, so the stance
-is identical; swap that one file to make it your own overlay.
+Pick your platform. All of them read the same `skills/2b/SKILL.md`, so the mode
+is identical everywhere; swap that one file to make it your own overlay.
 
 **Hermes** (full enforcement: per-turn injection, gate, cooldown, kill)
 
@@ -111,8 +112,8 @@ Lock Hermes to yourself (optional; open by default):
 | Command | Effect |
 |---|---|
 | `/2b` or `/2b status` | state + usage, one line |
-| `/2b engage` | combat stance on (30s cooldown between engages) |
-| `/2b disengage` | stance off, never rate-limited |
+| `/2b engage` | execution mode on (30s cooldown between engages) |
+| `/2b disengage` | mode off, never rate-limited |
 | `/2b disengage kill` | off + engage disabled until the next session/gateway start |
 | `/2b scan [target]` | review the current diff for over-engineering, findings only, ranked |
 | `/2b audit` | full-repo sweep for dead weight, evidence then kill list |
@@ -120,7 +121,7 @@ Lock Hermes to yourself (optional; open by default):
 
 ## Make it your own overlay
 
-The 2B persona is content, not mechanics. Everything load-bearing (explicit
+The 2B directive is content, not mechanics. Everything load-bearing (explicit
 command, gate, cooldown, kill switch, identity-safe injection) lives in the
 shared core and the adapters; the stance itself is just `skills/2b/SKILL.md`.
 Rewrite that file into any working-style overlay, keep the `[2B]`-style short
@@ -152,7 +153,7 @@ python3 gate-hook/handler.py --test  # gate policy
 
 ## Status
 
-What this is: one battle-overlay state machine with eight platform adapters,
+What this is: one execution-mode state machine with eight platform adapters,
 sharing a single directive and command core, with the Hermes path running in
 production on a persistent agent.
 

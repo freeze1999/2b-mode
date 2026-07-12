@@ -1,6 +1,6 @@
 {
   "name": "2b-mode",
   "version": "1.0.0",
-  "description": "2B combat coding overlay. Silent, precise, minimal strike: YAGNI, reuse first, stdlib before custom, the smallest correct change.",
+  "description": "2B execution mode: minimum resources, maximum output. Inventory existing code, git history, and installed dependencies first; write the fewest verified lines; conclusions only.",
   "contextFileName": "AGENTS.md"
 }

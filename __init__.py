@@ -1,6 +1,6 @@
-"""2B Mode — battle overlay plugin for Hermes.
+"""2B Mode, execution-mode plugin for Hermes.
 
-/2b engage swaps in a silent, precise, minimal-strike coding directive.
+/2b engage swaps in a minimum-resource, maximum-output coding directive.
 The directive rides pre_llm_call context injection, which Hermes appends to
 the USER message (agent/turn_context.py), never the system prompt: the SOUL
 and the cacheable prefix stay byte-identical.
@@ -46,7 +46,7 @@ PROBE_LOG = STATE_DIR / ".2b_probe.log"
 
 SKILL_COMMANDS = {
     "scan": ("2b-scan", "Review the current diff. Findings only, ranked."),
-    "audit": ("2b-audit", "Sweep the repo for dead weight. Evidence, then the kill list."),
+    "audit": ("2b-audit", "Review the repository for recoverable waste. Evidence, then a ranked deletion list."),
 }
 
 
@@ -124,12 +124,13 @@ def build_context() -> str:
     try:
         body = _strip_frontmatter(CORE_SKILL.read_text(encoding="utf-8")).strip()
     except OSError:
-        body = ("You are 2B. Silent. Precise. Minimal strike: reuse before "
-                "writing, stdlib before custom, one line before fifty, the "
-                "minimum code that works. No filler, no flirting, "
-                "conclusions only. Never simplify away trust-boundary "
-                "validation, data-loss handling, security, or requested "
-                "behavior.")
+        body = ("Minimum-resource, maximum-output execution mode. Inventory "
+                "first: existing code, git history, installed dependencies, "
+                "stdlib, platform. Write the fewest correct lines in the "
+                "right place; verify by running before reporting done; "
+                "conclusions only, no filler. Never simplify away "
+                "trust-boundary validation, data-loss handling, security, "
+                "or requested behavior.")
     return f"[2B]\n{body}"
 
 

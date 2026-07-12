@@ -57,7 +57,7 @@ function runAction(dir, action, now) {
     case 'kill': return state.disengage(dir, true, now);
     case 'diag': return diagLine(dir);
     case 'scan': return skillPrompt('2b-scan', 'Review the current diff. Findings only, ranked.');
-    case 'audit': return skillPrompt('2b-audit', 'Sweep the repo for dead weight. Evidence, then the kill list.');
+    case 'audit': return skillPrompt('2b-audit', 'Review the repository for recoverable waste. Evidence, then a ranked deletion list.');
     case 'status':
     default: return statusLine(dir);
   }
