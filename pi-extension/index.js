@@ -36,17 +36,20 @@ export default function twoBExtension(pi) {
   pi.registerCommand('2b', {
     description: '2B execution mode: engage, disengage [kill], scan, audit, diag, status',
     handler: async (args, ctx) => {
-      const { action } = parseArgs(args);
-      if (action === 'scan' || action === 'audit') {
-        const msg = runAction(dir, action);
+      const parsed = parseArgs(args);
+      // scan/review/audit produce a skill instruction the agent should act on;
+      // send it as a message. Everything else is a state toggle or a card.
+      if (['scan', 'review', 'audit'].includes(parsed.action)) {
+        const msg = runAction(dir, parsed);
         if (ctx?.isIdle?.() === false) {
           pi.sendUserMessage(msg, { deliverAs: 'followUp' });
         } else {
           pi.sendUserMessage(msg);
         }
+        syncStatus(ctx);
         return;
       }
-      const reply = runAction(dir, action);
+      const reply = runAction(dir, parsed);
       syncStatus(ctx);
       ctx?.ui?.notify?.(reply, 'info');
     },

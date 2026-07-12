@@ -48,7 +48,7 @@ export default async ({ client } = {}) => {
     'command.execute.before': async (input) => {
       if (!input || input.command !== '2b') return;
       const args = (input.arguments || '').trim();
-      const reply = runAction(stateDir(), parseArgs(args).action);
+      const reply = runAction(stateDir(), parseArgs(args));
       log('info', reply.split('\n')[0]);
     },
   };

@@ -44,10 +44,46 @@ CORE_SKILL = SKILLS_DIR / "2b" / "SKILL.md"
 PROBE = os.environ.get("HERMES_2B_PROBE", "").strip().lower() in ("1", "true", "yes")
 PROBE_LOG = STATE_DIR / ".2b_probe.log"
 
+ENGAGE_COOLDOWN_S = 30
+CONFIRM_WINDOW_S = 60
+
+# Heavy-model config (shared with the gateway resolver patch). Deployment-set,
+# never hardcoded. See ~/.config/2b-mode/heavy.json and the setup wizard.
+def _config_dir() -> Path:
+    xdg = os.environ.get("XDG_CONFIG_HOME")
+    return Path(xdg) / "2b-mode" if xdg else Path.home() / ".config" / "2b-mode"
+
+HEAVY_FILE = Path(os.environ.get("HERMES_2B_HEAVY_FILE", str(_config_dir() / "heavy.json")))
+
+
+def load_heavy() -> dict | None:
+    try:
+        cfg = json.loads(HEAVY_FILE.read_text())
+        if isinstance(cfg, dict) and cfg.get("model"):
+            return cfg
+    except Exception:
+        pass
+    return None
+
+
+def heavy_configured() -> bool:
+    return load_heavy() is not None
+
+
+def heavy_label() -> str:
+    c = load_heavy()
+    if not c:
+        return "NOT configured (run the 2b-mode setup)"
+    return c.get("label") or f"{c.get('model')} ({c.get('provider', '')})".strip(" ()")
+
+
+# review = the ungated diff-review skill; audit = ungated repo review. scan is
+# the GATED orchestration mode, handled separately.
 SKILL_COMMANDS = {
-    "scan": ("2b-scan", "Review the current diff. Findings only, ranked."),
+    "review": ("2b-review", "Review the current diff for over-engineering. Findings only, ranked."),
     "audit": ("2b-audit", "Review the repository for recoverable waste. Evidence, then a ranked deletion list."),
 }
+GATED = ("max", "ultra", "scan")
 
 
 # ── State (pure helpers, injectable clock) ────────────────────────────────────
@@ -79,7 +115,7 @@ def cooldown_remaining(now: float | None = None) -> float:
     return max(0.0, ENGAGE_COOLDOWN_S - (now - last))
 
 
-def engage(now: float | None = None) -> str:
+def engage(now: float | None = None, heavy: str | None = None) -> str:
     now = time.time() if now is None else now
     if is_killed():
         return "[2B] Kill switch armed. Engage disabled until gateway restart."
@@ -88,12 +124,24 @@ def engage(now: float | None = None) -> str:
     wait = cooldown_remaining(now)
     if wait > 0:
         return f"[2B] Cooldown. {int(wait) + 1}s."
-    _save_state({"engaged": True, "last_engage_toggle": now})
-    return "[2B] Engaged."
+    s = {"engaged": True, "last_engage_toggle": now}
+    if heavy:
+        s["heavy"] = heavy
+    _save_state(s)
+    return f"[2B] Engaged ({heavy})." if heavy else "[2B] Engaged."
+
+
+def heavy_mode() -> str | None:
+    """The active heavy mode (max/ultra), read by the gateway resolver to pick
+    the heavy model. None when not heavy-engaged, so the model reverts."""
+    if is_engaged() and not is_killed():
+        return _load_state().get("heavy") or None
+    return None
 
 
 def disengage(kill: bool = False, now: float | None = None) -> str:
-    """Never rate-limited, never blocked. The brake always brakes."""
+    """Never rate-limited, never blocked. The brake always brakes. Clearing the
+    state also clears the heavy flag, so the model reverts automatically."""
     now = time.time() if now is None else now
     state = _load_state()
     was = bool(state.get("engaged"))
@@ -105,11 +153,62 @@ def disengage(kill: bool = False, now: float | None = None) -> str:
     return "[2B] Disengaged." if was else "[2B] Not engaged."
 
 
+# ── Confirm flow (type-to-confirm gate for max / ultra / scan) ────────────────
+
+def set_pending(mode: str, phrase: str, now: float | None = None) -> None:
+    now = time.time() if now is None else now
+    s = _load_state()
+    s["pending"] = {"mode": mode, "phrase": phrase, "expires": now + CONFIRM_WINDOW_S}
+    _save_state(s)
+
+
+def get_pending(now: float | None = None) -> dict | None:
+    now = time.time() if now is None else now
+    p = _load_state().get("pending")
+    if not p:
+        return None
+    if now > p.get("expires", 0):
+        clear_pending()
+        return None
+    return p
+
+
+def clear_pending() -> None:
+    s = _load_state()
+    s.pop("pending", None)
+    _save_state(s)
+
+
+def approval_card(mode: str) -> str:
+    label = heavy_label()
+    lines = {
+        "max": ("2B // MAX", f"heavy model: {label}", "the whole task runs on a paid model"),
+        "ultra": ("2B // ULTRA", f"heavy model: {label}", "orchestration scan THEN the paid model on every subtask"),
+        "scan": ("2B // SCAN", "orchestration mode", "decomposes the task and may delegate to paid models and bridges"),
+    }[mode]
+    return "\n".join([
+        "▛" + "▀" * 31 + "▜",
+        f"  {lines[0]}",
+        f"  {lines[1]}",
+        f"  cost: {lines[2]}",
+        "",
+        f"  armed. reply  /2b confirm {mode}  within 60s",
+        "▙" + "▄" * 31 + "▟",
+    ])
+
+
+_USAGE = "/2b engage | disengage [kill] | max | ultra | scan | review | audit | diag"
+
+
 def status_line() -> str:
     if is_killed():
-        return "[2B] Killed until gateway restart. /2b engage | disengage [kill] | scan | audit | diag"
-    state = "engaged" if is_engaged() else "standby"
-    return f"[2B] {state}. /2b engage | disengage [kill] | scan | audit | diag"
+        return f"[2B] Killed until gateway restart. {_USAGE}"
+    hv = heavy_mode()
+    if hv:
+        state = f"engaged ({hv}: {heavy_label()})"
+    else:
+        state = "engaged" if is_engaged() else "standby"
+    return f"[2B] {state}. {_USAGE}"
 
 
 # ── Context injection ─────────────────────────────────────────────────────────
@@ -160,6 +259,7 @@ def diag() -> str:
     parts.append(f"skill file: {'ok' if CORE_SKILL.exists() else 'MISSING, fallback directive in use'}")
     ctx = build_context()
     parts.append(f"context: {len(ctx)} chars, header {ctx.splitlines()[0]!r}")
+    parts.append(f"heavy model: {heavy_label()}")
     if PROBE:
         n = len(PROBE_LOG.read_text().splitlines()) if PROBE_LOG.exists() else 0
         parts.append(f"probe: on, {n} firings logged")
@@ -170,10 +270,42 @@ def diag() -> str:
 
 # ── Command ───────────────────────────────────────────────────────────────────
 
+_SKILL_BLURBS = dict(SKILL_COMMANDS)
+_SKILL_BLURBS["scan"] = ("2b-scan",
+    "Orchestrate: decompose the task, route each part to the cheapest capable "
+    "model, delegate where a bridge fits, then execute the approved plan.")
+
+
 def _skill_prompt(command: str, args: str) -> str:
-    skill, blurb = SKILL_COMMANDS[command]
+    skill, blurb = _SKILL_BLURBS[command]
     tail = f"\n\nTarget: {args.strip()}" if args.strip() else ""
     return f"Load and follow the Hermes plugin skill `2b-mode:{skill}`. {blurb}{tail}"
+
+
+def _queue_or_return(ctx, prompt: str, label: str) -> str:
+    try:
+        if ctx.inject_message(prompt):
+            return f"[2B] {label} queued."
+    except Exception:
+        pass
+    return prompt
+
+
+def _confirm(ctx, arg: str) -> str:
+    p = get_pending()
+    if not p:
+        return "[2B] Nothing to confirm (no armed mode, or the 60s window lapsed)."
+    if arg.strip().lower() != p["phrase"]:
+        return f"[2B] Confirm mismatch. Reply /2b confirm {p['mode']} to fire, or wait for it to lapse."
+    clear_pending()
+    mode = p["mode"]
+    if mode == "scan":
+        return "[2B] scan armed. " + _queue_or_return(
+            ctx, _skill_prompt("scan", ""), "scan")
+    msg = engage(heavy=mode)  # max / ultra: gateway resolver applies the model
+    if mode == "ultra":
+        return msg + "\n" + _queue_or_return(ctx, _skill_prompt("scan", ""), "ultra scan")
+    return msg + f"\nheavy model active: {heavy_label()}. /2b disengage restores the normal model."
 
 
 def _make_handler(ctx):
@@ -185,20 +317,27 @@ def _make_handler(ctx):
         if low == "engage":
             return engage()
         if low in ("disengage", "off"):
+            clear_pending()
             return disengage()
         if low in ("disengage kill", "kill"):
+            clear_pending()
             return disengage(kill=True)
         if low == "diag":
             return diag()
         head, _, rest = arg.partition(" ")
-        if head.lower() in SKILL_COMMANDS:
-            prompt = _skill_prompt(head.lower(), rest)
-            try:
-                if ctx.inject_message(prompt):
-                    return f"[2B] {head.lower()} queued."
-            except Exception:
-                pass
-            return prompt
+        head = head.lower()
+        if head == "confirm":
+            return _confirm(ctx, rest)
+        if head in ("max", "ultra"):
+            if not heavy_configured():
+                return f"[2B] {head} needs a heavy model. Run the 2b-mode setup to configure one (see README)."
+            set_pending(head, head)
+            return approval_card(head)
+        if head == "scan":
+            set_pending("scan", "scan")
+            return approval_card("scan")
+        if head in SKILL_COMMANDS:
+            return _queue_or_return(ctx, _skill_prompt(head, rest), head)
         return status_line()
     return handler
 
@@ -219,8 +358,8 @@ def register(ctx) -> None:
     ctx.register_command(
         "2b",
         _make_handler(ctx),
-        description="2B execution mode: engage, disengage [kill], scan, audit, diag, status.",
-        args_hint="[engage|disengage [kill]|scan|audit|diag|status]",
+        description="2B execution mode: engage, disengage [kill], max, ultra, scan, review, audit, diag.",
+        args_hint="[engage|disengage [kill]|max|ultra|scan|review|audit|diag|confirm <mode>]",
     )
 
     log = getattr(ctx, "logger", None)
@@ -234,13 +373,19 @@ def register(ctx) -> None:
 
 # ── Self-test ─────────────────────────────────────────────────────────────────
 
+class _FakeCtx:
+    def inject_message(self, _prompt):
+        return False
+
+
 def _self_test() -> int:
     import tempfile
-    global STATE_DIR, STATE_FILE, KILL_FILE
+    global STATE_DIR, STATE_FILE, KILL_FILE, HEAVY_FILE
     with tempfile.TemporaryDirectory() as td:
         STATE_DIR = Path(td)
         STATE_FILE = STATE_DIR / ".2b_state.json"
         KILL_FILE = STATE_DIR / ".2b_killswitch"
+        HEAVY_FILE = STATE_DIR / "heavy.json"
         t0 = 1_000_000.0
 
         checks = []
@@ -276,6 +421,31 @@ def _self_test() -> int:
         _probe_mark()
         ok("probe on logs a firing", PROBE_LOG.exists() and "fired" in PROBE_LOG.read_text())
         PROBE = False
+
+        # ── heavy-mode + confirm flow ──
+        _save_state({})  # reset to standby
+        ctx = _FakeCtx()
+        h = _make_handler(ctx)
+        ok("max without heavy config refuses", "needs a heavy model" in h("max"))
+        ok("no pending after refused max", get_pending(t0) is None)
+        HEAVY_FILE.write_text(json.dumps({"provider": "openrouter", "model": "x/y", "label": "Test Heavy"}))
+        card = h("max")
+        ok("max arms a card", "2B // MAX" in card and "confirm max" in card)
+        ok("max does not engage yet", not is_engaged())
+        ok("confirm mismatch does not fire", "mismatch" in h("confirm ultra") and not is_engaged())
+        ok("confirm max engages heavy", "Engaged (max)" in h("confirm max") and heavy_mode() == "max")
+        ok("disengage clears heavy", (disengage(now=t0 + 500) or True) and heavy_mode() is None)
+        # window lapse
+        _save_state({})
+        set_pending("max", "max", now=t0)
+        ok("expired confirm does not fire", "Nothing to confirm" in _confirm(ctx, "max") if get_pending(t0 + 61) is None else False)
+        # scan is gated and returns orchestration skill on confirm
+        _save_state({})
+        ok("scan arms a card", "2B // SCAN" in h("scan"))
+        ok("scan confirm returns orchestration", "2b-scan" in h("confirm scan"))
+        # review/audit ungated
+        _save_state({})
+        ok("review ungated", "2b-review" in h("review") and get_pending() is None)
 
         failed = [n for n, c in checks if not c]
         for n, c in checks:

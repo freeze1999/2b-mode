@@ -27,7 +27,7 @@ function finish() {
       return;
     }
     const dir = hookStateDir();
-    const reply = runAction(dir, parseArgs(args).action);
+    const reply = runAction(dir, parseArgs(args));
     // engage/disengage flip state for the NEXT SessionStart to inject; the
     // reply here confirms the toggle (and for scan/audit carries the skill
     // instruction) so the user sees an immediate effect.
