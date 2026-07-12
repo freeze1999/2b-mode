@@ -219,7 +219,7 @@ def register(ctx) -> None:
     ctx.register_command(
         "2b",
         _make_handler(ctx),
-        description="2B battle overlay: engage, disengage [kill], scan, audit, status.",
+        description="2B execution mode: engage, disengage [kill], scan, audit, diag, status.",
         args_hint="[engage|disengage [kill]|scan|audit|diag|status]",
     )
 

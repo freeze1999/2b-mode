@@ -1,6 +1,6 @@
 name: 2b-mode
 version: 1.0.0
-description: Battle overlay. /2b engage swaps in a silent, precise, minimal-strike coding directive via pre_llm_call context injection. SOUL untouched. Explicit command only, no content matching.
+description: Execution mode. /2b engage swaps in a minimum-resource, maximum-output coding directive via pre_llm_call context injection. SOUL untouched. Explicit command only, no content matching.
 author: Claude + Neko (forked from DietrichGebert/ponytail v4.8.4, MIT)
 enabled: true
 hooks:

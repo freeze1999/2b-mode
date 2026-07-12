@@ -1,6 +1,6 @@
 // 2b-mode, pi extension.
 //
-// `/2b engage` arms the silent minimal-strike stance; while engaged, the [2B]
+// `/2b engage` arms the execution mode; while engaged, the [2B]
 // directive is prepended to the system prompt every turn (before_agent_start).
 // Reuses the shared JS core, so pi behaves exactly like the other adapters.
 
@@ -34,7 +34,7 @@ export default function twoBExtension(pi) {
   }
 
   pi.registerCommand('2b', {
-    description: '2B battle overlay: engage, disengage [kill], scan, audit, diag, status',
+    description: '2B execution mode: engage, disengage [kill], scan, audit, diag, status',
     handler: async (args, ctx) => {
       const { action } = parseArgs(args);
       if (action === 'scan' || action === 'audit') {
